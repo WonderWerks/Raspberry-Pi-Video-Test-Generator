@@ -40,12 +40,23 @@ def load(target):
     folder = MEDIA_FOLDERS.get(target)
     if not folder:
         return jsonify({"success": False, "message": "Unknown target"}), 400
+    data = request.json or {}
+    mode = data.get("mode", "folder")
     try:
         mpv = get_mpv(target)
-        files = sorted(f for f in folder.iterdir() if f.is_file())
-        mpv.load_playlist([str(f) for f in files])
-        mpv.close()
-        return jsonify({"success": True})
+        if mode == "single":
+            filename = data.get("filename")
+            if not filename:
+                mpv.close()
+                return jsonify({"success": False, "message": "No filename given"}), 400
+            mpv.loadfile(str(folder / filename))
+            mpv.close()
+            return jsonify({"success": True})
+        else:
+            files = sorted(f for f in folder.iterdir() if f.is_file())
+            mpv.load_playlist([str(f) for f in files])
+            mpv.close()
+            return jsonify({"success": True, "count": len(files)})
     except MpvIPCError as e:
         return jsonify({"success": False, "message": str(e)}), 503
 

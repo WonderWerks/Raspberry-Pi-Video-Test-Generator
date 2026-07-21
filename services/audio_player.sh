@@ -8,4 +8,6 @@ exec mpv --idle=yes \
     --input-ipc-server="$SOCKET" \
     --no-video \
     --audio-device=alsa/plughw:CARD=Headphones,DEV=0 \
-    --msg-level=vo=error
+    --loop-playlist=inf \
+    --msg-level=vo=error \
+    ~/vtg_gen2/media/audio/*

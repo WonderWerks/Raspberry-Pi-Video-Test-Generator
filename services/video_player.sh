@@ -20,5 +20,7 @@ exec mpv --idle=yes \
     --dscale=bilinear \
     --video-sync=display-resample \
     --audio-device=alsa/hdmi:CARD=vc4hdmi1,DEV=0 \
+    --loop-playlist=inf \
     --quiet \
-    --msg-level=vo=error
+    --msg-level=vo=error \
+    ~/vtg_gen2/media/video/*
