@@ -11,14 +11,16 @@
   h2 { font-size:18px; margin:0 0 12px; }
   .nowplaying { font-size:14px; color:#9fd; margin-bottom:14px; min-height:20px; }
   select { width:100%; padding:8px; margin-bottom:10px; background:#222; color:#eee; border:1px solid #444; border-radius:6px; }
-  .row { display:flex; gap:8px; flex-wrap:wrap; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
   button { flex:1; min-width:70px; padding:10px; border:none; border-radius:6px; background:#333; color:#eee; cursor:pointer; font-size:14px; }
   button:hover { background:#444; }
   button.primary { background:#2a6; }
   button.primary:hover { background:#3b7; }
   button.danger { background:#a33; }
   button.danger:hover { background:#b44; }
-  .err { color:#f77; font-size:13px; margin-top:8px; }
+  .status { font-size:13px; margin-top:6px; min-height:16px; }
+  .status.ok { color:#8c8; }
+  .status.err { color:#f77; }
 </style>
 </head>
 <body>
@@ -36,19 +38,31 @@ function render() {
     <div class="panel">
       <h2>${t.label}</h2>
       <div class="nowplaying" id="np-${t.id}">Loading status...</div>
+
       <select id="sel-${t.id}"></select>
-      <div class="row" style="margin-bottom:10px;">
-        <button class="primary" onclick="loadFolder('${t.id}')">Load folder</button>
+      <div class="row">
+        <button onclick="playSelected('${t.id}')">Play selected</button>
+        <button onclick="loadFolder('${t.id}')">Load whole folder</button>
+      </div>
+
+      <div class="row">
+        <button class="primary" onclick="ctl('${t.id}','toggle')">⏯ Play/Pause</button>
+        <button class="danger" onclick="ctl('${t.id}','stop')">⏹ Stop</button>
       </div>
       <div class="row">
         <button onclick="ctl('${t.id}','prev')">⏮ Prev</button>
-        <button onclick="ctl('${t.id}','toggle')">⏯ Play/Pause</button>
         <button onclick="ctl('${t.id}','next')">⏭ Next</button>
-        <button class="danger" onclick="ctl('${t.id}','stop')">⏹ Stop</button>
       </div>
-      <div class="err" id="err-${t.id}"></div>
+
+      <div class="status" id="status-${t.id}"></div>
     </div>
   `).join("");
+}
+
+function setStatusMsg(id, text, ok) {
+  const el = document.getElementById(`status-${id}`);
+  el.textContent = text;
+  el.className = "status " + (ok ? "ok" : "err");
 }
 
 async function loadFiles(id) {
@@ -60,29 +74,48 @@ async function loadFiles(id) {
       ? data.files.map(f => `<option>${f}</option>`).join("")
       : "<option>(no files found)</option>";
   } catch (e) {
-    document.getElementById(`err-${id}`).textContent = "Could not list media files.";
+    setStatusMsg(id, "Could not list media files.", false);
   }
 }
 
 async function loadFolder(id) {
-  document.getElementById(`err-${id}`).textContent = "";
   try {
-    const res = await fetch(`/api/load/${id}`, { method: "POST" });
+    const res = await fetch(`/api/load/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "folder" })
+    });
     const data = await res.json();
-    if (!data.success) document.getElementById(`err-${id}`).textContent = data.message || "Load failed.";
+    setStatusMsg(id, data.success ? `Loaded folder (${data.count} files) as playlist.` : (data.message || "Load failed."), data.success);
   } catch (e) {
-    document.getElementById(`err-${id}`).textContent = "Load request failed.";
+    setStatusMsg(id, "Load request failed.", false);
+  }
+}
+
+async function playSelected(id) {
+  const sel = document.getElementById(`sel-${id}`);
+  const filename = sel.value;
+  if (!filename) { setStatusMsg(id, "No file selected.", false); return; }
+  try {
+    const res = await fetch(`/api/load/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "single", filename })
+    });
+    const data = await res.json();
+    setStatusMsg(id, data.success ? `Playing: ${filename}` : (data.message || "Load failed."), data.success);
+  } catch (e) {
+    setStatusMsg(id, "Load request failed.", false);
   }
 }
 
 async function ctl(id, action) {
-  document.getElementById(`err-${id}`).textContent = "";
   try {
     const res = await fetch(`/api/control/${id}/${action}`, { method: "POST" });
     const data = await res.json();
-    if (!data.success) document.getElementById(`err-${id}`).textContent = data.message || "Command failed.";
+    if (!data.success) setStatusMsg(id, data.message || "Command failed.", false);
   } catch (e) {
-    document.getElementById(`err-${id}`).textContent = "Command request failed.";
+    setStatusMsg(id, "Command request failed.", false);
   }
 }
 
@@ -102,7 +135,6 @@ async function pollStatus() {
       const s = data.status;
       if (!s.filename) { el.textContent = "Nothing loaded."; continue; }
       const state = s.pause ? "Paused" : "Playing";
-      const pos = s.playlist_pos !== undefined ? s["playlist-pos"] : null;
       el.textContent = `${state} — ${s.filename} (${fmt(s["time-pos"])} / ${fmt(s.duration)})`;
     } catch (e) {
       el.textContent = "Status unavailable.";
