@@ -33,45 +33,6 @@ def status(target):
     except MpvIPCError as e:
         return jsonify({"success": False, "message": str(e)}), 503
 
-@app.route("/api/load/<target>", methods=["POST"])
-def load(target):
-    folder = MEDIA_FOLDERS.get(target)
-    if not folder:
-        return jsonify({"success": False, "message": "Unknown target"}), 400
-    data = request.json or {}
-    mode = data.get("mode", "folder")
-    try:
-        mpv = get_mpv(target)
-        if mode == "single":
-            filename = data.get("filename")
-            if not filename:
-                mpv.close()
-                return jsonify({"success": False, "message": "No filename given"}), 400
-            mpv.loadfile(str(folder / filename))
-            mpv.close()
-            return jsonify({"success": True})
-        else:
-            files = sorted(f for f in folder.iterdir() if f.is_file())
-            mpv.load_playlist([str(f) for f in files])
-            mpv.close()
-            return jsonify({"success": True, "count": len(files)})
-    except MpvIPCError as e:
-        return jsonify({"success": False, "message": str(e)}), 503
-
-@app.route("/api/control/<target>/<action>", methods=["POST"])
-def control(target, action):
-    actions = {"play": "play", "pause": "pause", "toggle": "toggle_pause",
-               "stop": "stop", "next": "next", "prev": "prev"}
-    if action not in actions:
-        return jsonify({"success": False, "message": f"Unknown action: {action}"}), 400
-    try:
-        mpv = get_mpv(target)
-        getattr(mpv, actions[action])()
-        mpv.close()
-        return jsonify({"success": True})
-    except MpvIPCError as e:
-        return jsonify({"success": False, "message": str(e)}), 503
-
 @app.route("/api/media/<target>")
 def list_media(target):
     if target == "image":
@@ -102,6 +63,20 @@ def load(target):
         mpv.load_playlist([str(f) for f in files])
         mpv.close()
         return jsonify({"success": True, "count": len(files)})
+    except MpvIPCError as e:
+        return jsonify({"success": False, "message": str(e)}), 503
+
+@app.route("/api/control/<target>/<action>", methods=["POST"])
+def control(target, action):
+    actions = {"play": "play", "pause": "pause", "toggle": "toggle_pause",
+               "stop": "stop", "next": "next", "prev": "prev"}
+    if action not in actions:
+        return jsonify({"success": False, "message": f"Unknown action: {action}"}), 400
+    try:
+        mpv = get_mpv(target)
+        getattr(mpv, actions[action])()
+        mpv.close()
+        return jsonify({"success": True})
     except MpvIPCError as e:
         return jsonify({"success": False, "message": str(e)}), 503
 
