@@ -23,12 +23,6 @@ def get_mpv(target):
 def index():
     return send_from_directory(app.static_folder, "index.html")
 
-@app.route("/api/media/<target>")
-def list_media(target):
-    folder = MEDIA_FOLDERS.get(target)
-    files = sorted(f.name for f in folder.iterdir() if f.is_file()) if folder and folder.exists() else []
-    return jsonify({"success": True, "files": files})
-
 @app.route("/api/status/<target>")
 def status(target):
     try:
