@@ -13,5 +13,4 @@ exec mpv --idle=yes \
     --vo=gpu \
     --profile=gpu-hq \
     --quiet \
-    --msg-level=vo=error \
-    ~/vtg_gen2/media/images_1080p/*
+    --msg-level=vo=error
