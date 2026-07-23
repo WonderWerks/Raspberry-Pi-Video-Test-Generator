@@ -4,6 +4,14 @@ from pathlib import Path
 import json
 from flask import Flask, jsonify, request, send_from_directory
 from mpv_ipc import MpvIPC, MpvIPCError
+import subprocess
+
+def get_ip(iface):
+    try:
+        out = subprocess.check_output(["ip", "-4", "-o", "addr", "show", iface], text=True)
+        return out.split()[3].split("/")[0]
+    except Exception:
+        return None
 
 MEDIA_DIR = Path(__file__).resolve().parent.parent / "media"
 SOCKETS = {"video": "/tmp/vtg-video.sock", "audio": "/tmp/vtg-audio.sock", "image": "/tmp/vtg-image.sock"}
@@ -115,6 +123,39 @@ def set_osd_config():
     with open(OSD_CONFIG_PATH, "w") as f:
         json.dump(cfg, f)
     return jsonify({"success": True})
+
+@app.route("/api/network")
+def network_info():
+    return jsonify({
+        "success": True,
+        "eth0": get_ip("eth0"),
+        "wlan0": get_ip("wlan0"),
+    })
+
+@app.route("/api/volume/<target>", methods=["POST"])
+def set_volume(target):
+    try:
+        level = int((request.json or {}).get("level"))
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "Invalid level"}), 400
+    try:
+        mpv = get_mpv(target)
+        mpv.set_volume(level)
+        mpv.close()
+        return jsonify({"success": True})
+    except MpvIPCError as e:
+        return jsonify({"success": False, "message": str(e)}), 503
+
+@app.route("/api/mute/<target>", methods=["POST"])
+def set_mute(target):
+    muted = bool((request.json or {}).get("muted"))
+    try:
+        mpv = get_mpv(target)
+        mpv.set_mute(muted)
+        mpv.close()
+        return jsonify({"success": True})
+    except MpvIPCError as e:
+        return jsonify({"success": False, "message": str(e)}), 503
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
