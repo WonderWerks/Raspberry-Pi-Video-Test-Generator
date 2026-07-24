@@ -14,7 +14,7 @@ def get_ip(iface):
         return None
 
 MEDIA_DIR = Path(__file__).resolve().parent.parent / "media"
-SOCKETS = {"video": "/tmp/vtg-video.sock", "audio": "/tmp/vtg-audio.sock", "image": "/tmp/vtg-image.sock"}
+SOCKETS = {"video": "/tmp/vtg-display.sock", "audio": "/tmp/vtg-audio.sock", "image": "/tmp/vtg-display.sock"}
 MEDIA_FOLDERS = {"video": MEDIA_DIR / "video", "audio": MEDIA_DIR / "audio"}
 IMAGE_FOLDERS = {
     "1080p": MEDIA_DIR / "images_1080p",

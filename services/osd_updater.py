@@ -10,7 +10,7 @@ from mpv_ipc import MpvIPC, MpvIPCError
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CONFIG_PATH = BASE_DIR / "state" / "osd_config.json"
-SOCKETS = ["/tmp/vtg-video.sock", "/tmp/vtg-image.sock"]
+SOCKETS = ["/tmp/vtg-display.sock"]
 PORT = 5000
 POLL_SECONDS = 5
 
